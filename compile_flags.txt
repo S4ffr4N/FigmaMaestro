@@ -1,0 +1,9 @@
+-Icomponents
+
+# === Standards ===
+-std=c99
+-std=c++17
+-Wall
+-Wextra
+-Wpedantic
+

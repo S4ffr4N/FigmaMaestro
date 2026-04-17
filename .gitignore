@@ -1,0 +1,124 @@
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
+# debug information files
+*.dwo
+
+# No backups/olds
+*.bak
+*.bk
+*.old
+
+# No binaries
+bin/
+
+# No build folders
+build/
+build.clang/
+
+# No cache
+.cache/
+.clangd/
+
+# No env vars
+.env
+
+# No vgcore
+vgcore*
+
+# Fuzzing binaries & outputs
+/fuzz_http
+/fuzz_http_asan
+/findings/
+/default/
+findings/
+findings_old/
+findings_copy/
+findings_old_old/
+fuzz_http
+fuzz_http_asan
+/*.cur_input
+/*.state
+/*.synced
+
+# Untracking these for now
+tmp/
+secrets.h
+sdkconfig
+*.lock
+notes.md
+
+# Cmake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+#ESP-IDF
+managed_components/
+.espressif/
+.tools/
+
+#Python
+__pycache__/
+*.pyc
+*.pyo
+
+
+#Editor & OS
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+*~
+*.swp
+
