@@ -1,71 +1,63 @@
 #include "display_handler.h"
 #include "gt911.h"
 #include "lvgl_port.h"
-#include "misc/lv_color.h"
 #include "rgb_lcd_port.h"
-#include "text_contents.h"
 #include "ui.h"
-#include "widgets/lv_label.h"
 
-#include "esp_chip_info.h"
-#include "esp_heap_caps.h"
 #include "esp_log.h"
-#include <time.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include <string.h>
 
 static UI g_ui;
 static const char *TAG = "display_handler";
 
-extern const lv_font_t notosans_14;
-
 static esp_lcd_panel_handle_t panel_handle = NULL;
 static esp_lcd_touch_handle_t tp_handle = NULL;
 
-static char screen_text[DISPLAY_MAX_CHAR_ROWS * DISPLAY_MAX_CHAR_PER_ROW] = {0};
-static char model_info[87] = {0};
-static char iso_string[20] = {0};
-static char mem_info[91] = {0};
-
-static char *get_iso_time_string(void) {
-  time_t epoch = time(NULL);
-  struct tm *tm = gmtime(&epoch);
-  if (tm) {
-    int year = tm->tm_year + 1900;
-    int month = tm->tm_mon + 1;
-    int day = tm->tm_mday;
-    int hour = tm->tm_hour;
-    int min = tm->tm_min;
-    int sec = tm->tm_sec;
-    if (snprintf(iso_string, 20, "%04d-%02d-%02dT%02d:%02d:%02d", year, month,
-                 day, hour, min, sec) < 0) {
-      ESP_LOGW(TAG, "Failed to parse current time");
-      memset(iso_string, 0, sizeof(iso_string));
-      snprintf(iso_string, sizeof(iso_string), "N/A");
-    }
-  } else {
-    ESP_LOGW(TAG, "Failed to create tm struct from epoch");
-    snprintf(iso_string, sizeof(iso_string), "N/A");
-  }
-
-  return iso_string;
-}
-
 void display_handler_wifi_status(bool connected, const char *ssid,
                                  const char *ip, int rssi) {
-  if (lvgl_port_lock(-1)) {
+  static bool last_connected = false;
+  static int last_rssi = -127;
+  static char last_ssid[64] = {0};
+  static char last_ip[32] = {0};
+
+  const char *safe_ssid = ssid ? ssid : "";
+  const char *safe_ip = ip ? ip : "";
+
+  if (last_connected == connected && last_rssi == rssi &&
+      strcmp(last_ssid, safe_ssid) == 0 && strcmp(last_ip, safe_ip) == 0) {
+    return;
+  }
+
+  last_connected = connected;
+  last_rssi = rssi;
+  snprintf(last_ssid, sizeof(last_ssid), "%s", safe_ssid);
+  snprintf(last_ip, sizeof(last_ip), "%s", safe_ip);
+
+  if (lvgl_port_lock(pdMS_TO_TICKS(20))) {
     ui_set_wifi_status(&g_ui, connected, ssid, ip, rssi);
     lvgl_port_unlock();
   }
 }
 
 void display_handler_wifi_connecting(void) {
-  if (lvgl_port_lock(-1)) {
+    if (lvgl_port_lock(pdMS_TO_TICKS(20))) {
     ui_set_wifi_connecting(&g_ui);
     lvgl_port_unlock();
   }
 }
 
 void display_handler_wifi_failed(const char *reason) {
-  if (lvgl_port_lock(-1)) {
+  static char last_reason[128] = {0};
+  const char *safe_reason = reason ? reason : "Connection failed";
+
+  if (strcmp(last_reason, safe_reason) == 0) {
+    return;
+  }
+  snprintf(last_reason, sizeof(last_reason), "%s", safe_reason);
+
+  if (lvgl_port_lock(pdMS_TO_TICKS(20))) {
     ui_set_wifi_failed(&g_ui, reason);
     lvgl_port_unlock();
   }
@@ -75,7 +67,7 @@ bool display_handler_consume_wifi_connect_request(char *ssid, unsigned ssid_sz,
                                                   char *password,
                                                   unsigned password_sz) {
   bool ret = false;
-  if (lvgl_port_lock(-1)) {
+  if (lvgl_port_lock(pdMS_TO_TICKS(10))) {
     ret = ui_consume_wifi_connect_request(&g_ui, ssid, ssid_sz, password,
                                           password_sz);
     lvgl_port_unlock();
@@ -115,44 +107,18 @@ int display_handler_init(DH *_DH) {
 void display_handler_work(void *_null_for_now) {
   (void)_null_for_now;
 
-  esp_chip_info_t chip_info;
-  esp_chip_info(&chip_info);
-
-  snprintf(mem_info, sizeof(mem_info),
-           "Total: %2.2fkB\n"
-           "Internal: %2.2fkB\n"
-           "External: %2.2fkB\n"
-           "Largest free block: %u bytes",
-           (float)esp_get_free_heap_size() / 1024,
-           (float)heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
-           (float)heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024,
-           heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
-
-  char intro[] = "----------------------------------------------------\n"
-                 "-------------------- ESPMaestro --------------------\n"
-                 "----------------------------------------------------\n";
-
-  snprintf(screen_text, sizeof(screen_text),
-           "Hello Boss \n%s\nSystem Time: %s\n%s\nMemory %s\n\n Click the "
-           "buttons for more FAKTA",
-           intro, get_iso_time_string(), model_info, mem_info);
-
   if (lvgl_port_lock(-1)) {
     ui_init(&g_ui);
     ui_show_home_screen(&g_ui);
     lvgl_port_unlock();
   }
 
-  ESP_LOGI(TAG, "UI initialized, starting loop..");
+  ESP_LOGI(TAG, "UI initialized, starting loop");
   TickType_t x_last_wake = xTaskGetTickCount();
   const TickType_t x_freq = pdMS_TO_TICKS(1000);
-  size_t counter = 0;
 
   while (1) {
-    counter++;
-    ESP_LOGI(TAG, "System tick #%zu!", counter);
-
-    if (lvgl_port_lock(-1)) {
+    if (lvgl_port_lock(pdMS_TO_TICKS(20))) {
       ui_tick(&g_ui);
       lvgl_port_unlock();
     }

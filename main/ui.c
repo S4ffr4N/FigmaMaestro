@@ -37,6 +37,8 @@ static lv_obj_t *ui_create_input_row(UI *_UI, lv_obj_t *_parent,
 static void ui_apply_dark_card_style(lv_obj_t *_obj);
 static void ui_apply_dark_button_style(lv_obj_t *_obj, lv_color_t _bg);
 static void ui_apply_input_style(lv_obj_t *_obj);
+static void ui_make_static_container(lv_obj_t *_obj);
+static void ui_enable_parent_vertical_scroll(lv_obj_t *_obj);
 static void ui_update_footer_status(UI *_UI);
 static void ui_update_footer_datetime(UI *_UI);
 static void ui_update_wifi_header_indicator(UI *_UI);
@@ -135,6 +137,14 @@ static void ui_apply_input_style(lv_obj_t *_obj) {
   lv_obj_set_style_pad_right(_obj, 12, 0);
 }
 
+static void ui_make_static_container(lv_obj_t *_obj) {
+  if (!_obj)
+    return;
+
+  lv_obj_clear_flag(_obj, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_scrollbar_mode(_obj, LV_SCROLLBAR_MODE_OFF);
+}
+
 static lv_obj_t *ui_create_card(lv_obj_t *_parent, lv_coord_t _w,
                                 lv_coord_t _h) {
   lv_obj_t *card = lv_obj_create(_parent);
@@ -149,6 +159,8 @@ static lv_obj_t *ui_create_button(lv_obj_t *_parent, const char *_text,
   lv_obj_t *btn = lv_btn_create(_parent);
   lv_obj_set_size(btn, _w, _h);
   ui_apply_dark_button_style(btn, _bg);
+  ui_make_static_container(btn);
+  ui_enable_parent_vertical_scroll(btn);
   lv_obj_t *lbl = lv_label_create(btn);
   lv_label_set_text(lbl, _text);
   lv_obj_center(lbl);
@@ -193,6 +205,8 @@ static lv_obj_t *ui_create_input_row(UI *_UI, lv_obj_t *_parent,
   lv_obj_set_layout(wrap, LV_LAYOUT_FLEX);
   lv_obj_set_flex_flow(wrap, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_row(wrap, 6, 0);
+  ui_make_static_container(wrap);
+  ui_enable_parent_vertical_scroll(wrap);
 
   lv_obj_t *lbl = lv_label_create(wrap);
   lv_label_set_text(lbl, _label);
@@ -205,6 +219,7 @@ static lv_obj_t *ui_create_input_row(UI *_UI, lv_obj_t *_parent,
   lv_textarea_set_placeholder_text(ta, _placeholder);
   lv_textarea_set_password_mode(ta, _password);
   ui_apply_input_style(ta);
+  ui_enable_parent_vertical_scroll(ta);
   lv_obj_add_event_cb(ta, textarea_changed_event_cb, LV_EVENT_VALUE_CHANGED,
                       _UI);
   lv_obj_add_event_cb(ta, textarea_focus_event_cb, LV_EVENT_FOCUSED, _UI);
@@ -282,6 +297,7 @@ void ui_init(UI *_UI) {
   lv_obj_set_style_bg_opa(_UI->root, LV_OPA_COVER, 0);
   lv_obj_set_layout(_UI->root, LV_LAYOUT_FLEX);
   lv_obj_set_flex_flow(_UI->root, LV_FLEX_FLOW_COLUMN);
+  ui_make_static_container(_UI->root);
 
   _UI->header = lv_obj_create(_UI->root);
   lv_obj_set_width(_UI->header, LV_PCT(100));
@@ -294,6 +310,7 @@ void ui_init(UI *_UI) {
   lv_obj_set_style_pad_right(_UI->header, 16, 0);
   lv_obj_set_style_pad_top(_UI->header, 10, 0);
   lv_obj_set_style_pad_bottom(_UI->header, 10, 0);
+  ui_make_static_container(_UI->header);
 
   _UI->body = lv_obj_create(_UI->root);
   lv_obj_set_width(_UI->body, LV_PCT(100));
@@ -303,6 +320,7 @@ void ui_init(UI *_UI) {
   lv_obj_set_style_bg_color(_UI->body, lv_color_black(), 0);
   lv_obj_set_style_bg_opa(_UI->body, LV_OPA_COVER, 0);
   lv_obj_set_style_pad_all(_UI->body, 0, 0);
+  ui_make_static_container(_UI->body);
 
   _UI->footer = lv_obj_create(_UI->root);
   lv_obj_set_width(_UI->footer, LV_PCT(100));
@@ -313,13 +331,16 @@ void ui_init(UI *_UI) {
   lv_obj_set_style_bg_opa(_UI->footer, LV_OPA_COVER, 0);
   lv_obj_set_style_pad_left(_UI->footer, 12, 0);
   lv_obj_set_style_pad_right(_UI->footer, 12, 0);
+  ui_make_static_container(_UI->footer);
 
   _UI->keyboard = lv_keyboard_create(screen);
   lv_obj_set_width(_UI->keyboard, LV_PCT(100));
   lv_obj_set_height(_UI->keyboard, 220);
   lv_obj_align(_UI->keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
   lv_obj_add_flag(_UI->keyboard, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_add_event_cb(_UI->keyboard, keyboard_event_cb, LV_EVENT_ALL, _UI);
+  ui_make_static_container(_UI->keyboard);
+  lv_obj_add_event_cb(_UI->keyboard, keyboard_event_cb, LV_EVENT_READY, _UI);
+  lv_obj_add_event_cb(_UI->keyboard, keyboard_event_cb, LV_EVENT_CANCEL, _UI);
 
   ui_rebuild(_UI);
 }
@@ -422,6 +443,8 @@ static void ui_update_wifi_header_indicator(UI *_UI) {
   lv_obj_set_style_bg_opa(cont, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(cont, 0, 0);
   lv_obj_set_style_pad_all(cont, 0, 0);
+  ui_make_static_container(cont);
+  ui_enable_parent_vertical_scroll(cont);
 
   const lv_coord_t x[4] = {4, 14, 24, 34};
   const lv_coord_t h[4] = {6, 10, 14, 18};
@@ -501,6 +524,8 @@ static void ui_build_home(UI *_UI) {
   lv_obj_set_flex_align(row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
                         LV_FLEX_ALIGN_CENTER);
   lv_obj_set_style_pad_column(row, 28, 0);
+  ui_make_static_container(row);
+  ui_enable_parent_vertical_scroll(row);
 
   ui_create_menu_tile(row, "Settings", "Configure device settings",
                       lv_color_hex(0x2563EB), home_settings_event_cb, _UI);
@@ -518,6 +543,7 @@ static void ui_build_settings(UI *_UI) {
   lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_all(panel, 18, 0);
   lv_obj_set_style_pad_row(panel, 14, 0);
+  ui_make_static_container(panel);
 
   ui_create_menu_tile(panel, "WiFi Configuration", "SSID / password / connect",
                       lv_color_hex(0x2563EB), settings_wifi_event_cb, _UI);
@@ -586,6 +612,7 @@ static void ui_build_wifi_config(UI *_UI) {
   lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_all(panel, 18, 0);
   lv_obj_set_style_pad_row(panel, 12, 0);
+  ui_make_static_container(panel);
 
   ui_create_input_row(_UI, panel, "Network Name (SSID)",
                       "Enter WiFi network name", &_UI->ssid_ta, false);
@@ -600,6 +627,8 @@ static void ui_build_wifi_config(UI *_UI) {
   lv_obj_set_layout(pwd_wrap, LV_LAYOUT_FLEX);
   lv_obj_set_flex_flow(pwd_wrap, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_row(pwd_wrap, 6, 0);
+  ui_make_static_container(pwd_wrap);
+  ui_enable_parent_vertical_scroll(pwd_wrap);
 
   lv_obj_t *pwd_lbl = lv_label_create(pwd_wrap);
   lv_label_set_text(pwd_lbl, "Password");
@@ -611,6 +640,8 @@ static void ui_build_wifi_config(UI *_UI) {
   lv_obj_set_style_bg_opa(pwd_row, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(pwd_row, 0, 0);
   lv_obj_set_style_pad_all(pwd_row, 0, 0);
+  ui_make_static_container(pwd_row);
+  ui_enable_parent_vertical_scroll(pwd_row);
 
   _UI->password_ta = lv_textarea_create(pwd_row);
   lv_obj_set_width(_UI->password_ta, LV_PCT(100));
@@ -635,6 +666,8 @@ static void ui_build_wifi_config(UI *_UI) {
                       LV_EVENT_CLICKED, _UI);
 
   _UI->wifi_status_box = ui_create_card(panel, LV_PCT(100), 56);
+  ui_make_static_container(_UI->wifi_status_box);
+  ui_enable_parent_vertical_scroll(_UI->wifi_status_box);
   ui_update_wifi_status_box(_UI);
 
   _UI->connect_btn = ui_create_button(panel, LV_SYMBOL_WIFI " Connect to WiFi",
@@ -650,6 +683,10 @@ static void ui_build_facility_config(UI *_UI) {
   lv_obj_t *panel = ui_create_card(_UI->body, 780, 460);
   lv_obj_center(panel);
   lv_obj_add_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_scroll_dir(panel, LV_DIR_VER);
+  lv_obj_set_scrollbar_mode(panel, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLL_MOMENTUM);
+  lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLL_ELASTIC);
   lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
   lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_all(panel, 18, 0);
@@ -687,6 +724,10 @@ static void ui_build_device_info(UI *_UI) {
   lv_obj_t *panel = ui_create_card(_UI->body, 780, 420);
   lv_obj_center(panel);
   lv_obj_add_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_scroll_dir(panel, LV_DIR_VER);
+  lv_obj_set_scrollbar_mode(panel, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLL_MOMENTUM);
+  lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLL_ELASTIC);
   lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
   lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_all(panel, 18, 0);
@@ -781,6 +822,7 @@ static void ui_build_facts(UI *_UI) {
   lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_all(panel, 18, 0);
   lv_obj_set_style_pad_row(panel, 10, 0);
+  ui_make_static_container(panel);
 
   lv_obj_t *title = lv_label_create(panel);
   lv_label_set_text(title, "Facts");

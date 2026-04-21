@@ -3,6 +3,7 @@
 
 #include "lvgl.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef enum {
   UI_SCREEN_HOME = 0,
@@ -28,14 +29,19 @@ typedef struct {
   lv_obj_t *header_home_btn;
   lv_obj_t *header_title;
   lv_obj_t *header_wifi_btn;
+  lv_obj_t *header_wifi_icon_cont;
+  lv_obj_t *header_wifi_bars[4];
+  lv_obj_t *header_wifi_slash;
   lv_obj_t *footer_datetime_label;
   lv_obj_t *footer_status_label;
 
   lv_obj_t *wifi_status_box;
+  lv_obj_t *wifi_status_label;
   lv_obj_t *ssid_ta;
   lv_obj_t *password_ta;
   lv_obj_t *password_toggle_btn;
   lv_obj_t *connect_btn;
+  lv_obj_t *connect_btn_label;
   lv_obj_t *keyboard;
 
   lv_obj_t *facility_name_ta;
@@ -56,11 +62,15 @@ typedef struct {
   bool show_password;
 
   int wifi_rssi;
+  int last_datetime_second;
+  uint32_t footer_status_update_div;
 
   char wifi_status[128];
   char connected_ssid[64];
   char ip_address[32];
   char datetime_string[64];
+  char footer_status_string[96];
+  char current_title[32];
 
   char pending_ssid[64];
   char pending_password[64];
